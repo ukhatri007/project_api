@@ -1,5 +1,8 @@
-from flask import Flask
+from flask import Flask , request
+from collections import OrderedDict
+from flask import jsonify
 from flask_sqlalchemy import SQLAlchemy
+
 
 app = Flask(__name__)
 
@@ -28,10 +31,48 @@ def get_drink():
     drinks = Drink.query.all()
     output = []
     for d in drinks:
-        drink_data = {'name':d.name,'description':d.description}
+        drink_data = OrderedDict({'description':d.description,'name':d.name})
         output.append(drink_data)
         # it return json format of data
-    return {"drink":output}
+    return jsonify( {"drink":output})
+
+@app.route("/drinks/<id>")
+def get_drinks(id):
+    drink = Drink.query.get_or_404(id)
+    return {"name":drink.name,"description":drink.description}
+
+@app.route("/drinks",methods=['POST'])
+def add_drink():
+    new_drink = Drink(name = request.json['name'], description = request.json['description'])
+    db.session.add(new_drink)
+    db.session.commit()
+    return {'id':new_drink.id}
+
+@app.route('/drinks/<id>',methods=["DELETE"])
+def delete_drink(id):
+    drink = Drink.query.get(id)
+    db.session.delete(drink)
+    db.session.commit()
+    return(f"{id} is deleted")
+
+@app.route('/drinks/<id>',methods=["PUT"])
+def update_drink(id):
+    data= request.get_json()
+    drink = Drink.query.get(id)
+    
+    if not drink:
+        return{"meaasge":"drink not found"}
+    
+
+    drink.name = data.get("name",drink.name)
+    drink.description = data.get("description",drink.description)
+    db.session.commit()
+
+    return {"drink updated",f"{drink.name}-{drink.description}"}
+
+
+
+
 
 
 if __name__ == "__main__":
@@ -40,7 +81,7 @@ if __name__ == "__main__":
         db.create_all()  # used to create connection to database using (app.config URI)
 
         result=get_drink()
-        print(result)
+        # print(result)
     
 
     app.run(debug=True)
